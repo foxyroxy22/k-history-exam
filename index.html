@@ -126,11 +126,35 @@ tbody th { color: var(--muted); font-weight: 600; white-space: nowrap; width: 64
 .q .tap { margin-top: 12px; font-size: 13px; color: var(--muted-soft); }
 .q.open .tap { display: none; }
 
+.ex { display: inline-block; font-size: 11px; font-weight: 600; color: var(--primary); background: var(--primary-soft); border-radius: 999px; padding: 1px 8px; vertical-align: 1px; white-space: nowrap; }
+.add .ex { font-size: 11px; }
+h3 { color: var(--ink); font-size: 16px; font-weight: 600; margin: 32px 0 12px; }
+.exam-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.exam-grid .label { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 12px; }
+.bar { display: grid; grid-template-columns: 56px 1fr 40px; align-items: center; gap: 12px; margin: 10px 0; }
+.bar-name { color: var(--ink); font-weight: 600; font-size: 14px; }
+.bar-track { height: 10px; background: var(--surface-strong); border-radius: 999px; overflow: hidden; }
+.bar-fill { display: block; height: 100%; background: var(--primary); border-radius: 999px; }
+.bar-n { font-size: 14px; color: var(--muted); text-align: right; }
+.hint { font-size: 13px; color: var(--muted-soft); }
+.howto { margin: 0; padding-left: 0; list-style: none; }
+.howto li { padding: 6px 0; font-size: 15px; }
+.clues { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.clues .card { padding: 20px; }
+.clue-era { color: var(--primary); font-weight: 700; margin-bottom: 8px; }
+.clues ul { margin: 0; padding-left: 18px; font-size: 15px; }
+.clues li { padding: 3px 0; }
+table.traps { min-width: 560px; }
+.opts { list-style: none; margin: 12px 0 0; padding: 0; font-size: 14px; }
+.opts li { display: flex; gap: 6px; padding: 2px 0; }
+.opts span { color: var(--muted); }
+.q .why { font-size: 14px; color: var(--body); font-weight: 400; margin-top: 4px; }
+
 footer { padding: 64px 0 48px; color: var(--muted-soft); font-size: 12px; }
 
 @media (max-width: 760px) {
   .wrap { padding: 0 16px; }
-  .hero-row, .era-body, .quiz, .pairs { grid-template-columns: 1fr; }
+  .hero-row, .era-body, .quiz, .pairs, .exam-grid, .clues { grid-template-columns: 1fr; }
   .timeline { grid-template-columns: 1fr; padding: 0 0 0 28px; gap: 20px; }
   .timeline::before { top: 8px; bottom: 8px; left: 7px; right: auto; width: 2px; height: auto; }
   .tl::before { top: 4px; left: -28px; }
@@ -158,7 +182,42 @@ const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&
 const fmt = s => esc(s)
   .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
   .replace(/\{\{(.+?)\}\}/g, '<span class="add">$1</span>')
+  .replace(/&lt;&lt;(.+?)&gt;&gt;/g, '<span class="ex">$1</span>')
   .replace(/★+/g, m => `<span class="star">${m}</span>`);
+const CIRCLED = "①②③④⑤";
+
+function examSection(E) {
+  if (!E) return "";
+  const max = Math.max(...E.dist.map(d => d.n));
+  const total = E.dist.reduce((s, d) => s + d.n, 0);
+  return `
+    <section id="exam"><h2>기출 분석</h2>
+      <p class="lead">${esc(E.range)}<br>${fmt(E.format)}</p>
+      <div class="exam-grid">
+        <div class="card"><div class="label">어느 시대가 나왔나</div>
+          ${E.dist.map(d => `<div class="bar"><span class="bar-name">${esc(d.era)}</span><span class="bar-track"><span class="bar-fill" style="width:${max ? d.n / max * 100 : 0}%"></span></span><span class="bar-n">${d.n}회</span></div>`).join("")}
+          <div class="hint">전체 ${total}회 중</div></div>
+        <div class="card"><div class="label">이렇게 공부하세요</div>
+          <ol class="howto">${E.howto.map(h => `<li>${fmt(h)}</li>`).join("")}</ol></div>
+      </div>
+      <h3>자료에 이 단서가 보이면 → 이 시대</h3>
+      <div class="clues">${E.clues.map(c => `<div class="card"><div class="clue-era">${esc(c.era)}</div><ul>${c.items.map(i => `<li>${fmt(i)}</li>`).join("")}</ul></div>`).join("")}</div>
+      <h3>정답으로 나온 선지</h3>
+      <div class="clues">${E.answers.map(c => `<div class="card"><div class="clue-era">${esc(c.era)}</div><ul>${c.items.map(([t, n]) => `<li>${fmt(t)} <span class="ex">${n}회</span></li>`).join("")}</ul></div>`).join("")}</div>
+      <h3>오답 단골 · 보자마자 지우기</h3>
+      <div class="table-wrap"><table class="traps"><thead><tr><th>선지</th><th>왜 오답?</th><th>빈도</th></tr></thead>
+        <tbody>${E.traps.map(([t, w, n]) => `<tr><td><strong>${fmt(t)}</strong></td><td>${fmt(w)}</td><td>${esc(n)}</td></tr>`).join("")}</tbody></table></div>
+      <h3>내 메모에서 보강한 부분</h3>
+      <ul class="points gaps">${E.gaps.map(g => `<li>${fmt(g)}</li>`).join("")}</ul>
+    </section>`;
+}
+
+function quizCard(q, i) {
+  const opts = q.opts ? `<ol class="opts">${q.opts.map((o, j) => `<li><span>${CIRCLED[j]}</span>${fmt(o)}</li>`).join("")}</ol>` : "";
+  const ans = typeof q.a === "number" ? `${CIRCLED[q.a - 1]} ${fmt(q.opts[q.a - 1])}` : fmt(q.a);
+  return `<button class="q" type="button"><div class="num">Q${i + 1}</div><div class="text">${fmt(q.q)}</div>${opts}
+    <div class="tap">눌러서 정답 보기</div><div class="ans">${ans}${q.why ? `<div class="why">${fmt(q.why)}</div>` : ""}</div></button>`;
+}
 
 function photo(p) {
   const badge = p.star ? '<span class="badge">★ 사진 필수</span>' : "";
@@ -181,7 +240,7 @@ function render() {
   document.getElementById("tabs").innerHTML = LECTURES.map(x =>
     `<a href="?l=${x.id}" class="${x.id === L.id ? "on" : ""}">${+x.id}강 ${esc(x.title)}</a>`).join("");
 
-  const jump = [["timeline", "연표"], ["compare", "비교표"], ...L.eras.map(e => [e.id, e.name]), ["quiz", "퀴즈"]];
+  const jump = [...(L.exam ? [["exam", "기출"]] : []), ["timeline", "연표"],["compare", "비교표"], ...L.eras.map(e => [e.id, e.name]), ["quiz", "퀴즈"]];
 
   document.getElementById("app").innerHTML = `
   <div class="jump"><div class="wrap"><nav class="pill">${jump.map(([h, t]) => `<a href="#${h}">${t}</a>`).join("")}</nav></div></div>
@@ -197,6 +256,8 @@ function render() {
       </div>
       <div class="legend"><span><span class="star">★</span> 노션 메모에서 중요 표시한 것</span><span><span class="add">메모에 없던 설명</span></span></div>
     </div>
+
+    ${examSection(L.exam)}
 
     <section id="timeline"><h2>연표</h2>
       <div class="timeline">${L.timeline.map(t => `<div class="tl"><div class="era">${esc(t.era)}</div><div class="when">${esc(t.when)}</div><div class="key">${esc(t.key)}</div></div>`).join("")}</div>
@@ -222,7 +283,7 @@ function render() {
     </section>`).join("")}
 
     <section id="quiz"><h2>퀴즈</h2>
-      <div class="quiz">${L.quiz.map((q, i) => `<button class="q" type="button"><div class="num">Q${i + 1}</div><div class="text">${fmt(q.q)}</div><div class="tap">눌러서 정답 보기</div><div class="ans">${fmt(q.a)}</div></button>`).join("")}</div>
+      <div class="quiz">${L.quiz.map(quizCard).join("")}</div>
     </section>
 
     <footer>사진: Wikimedia Commons (각 사진의 라이선스 표기 참고) · 사진을 누르면 원본 페이지로 이동해요.</footer>
