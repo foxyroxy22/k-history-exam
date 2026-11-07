@@ -5,6 +5,7 @@ LECTURES.push({
   subtitle: "구석기 · 신석기 · 청동기 · 철기",
   audio: "audio/01.m4a",
   oneLine: "신석기까지 **평등**, 청동기부터 **계급**. 고인돌이 그 증거.",
+  timelineNote: "평등 사회 (구석기·신석기) ┃ **계급 사회** (청동기부터)",
   timeline: [
     { era: "구석기", when: "약 70만 년 전", key: "뗀석기 · 이동 생활" },
     { era: "신석기", when: "기원전 8000년경", key: "간석기 · 농경 · 정착" },

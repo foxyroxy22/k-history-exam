@@ -150,11 +150,45 @@ table.traps { min-width: 560px; }
 .opts span { color: var(--muted); }
 .q .why { font-size: 14px; color: var(--body); font-weight: 400; margin-top: 4px; }
 
+.timeline { grid-template-columns: repeat(var(--cols, 4), 1fr); }
+.curve { padding: 16px; overflow-x: auto; }
+.curve svg { width: 100%; min-width: 620px; height: auto; display: block; }
+.curve .grid { stroke: var(--hairline-soft); stroke-width: 1; }
+.curve .line { fill: none; stroke: var(--primary); stroke-width: 3; stroke-linejoin: round; }
+.curve .dot { fill: var(--canvas); stroke: var(--primary); stroke-width: 3; }
+.curve .star-dot { fill: var(--primary); }
+.curve .xl { font-size: 13px; fill: var(--ink); text-anchor: middle; font-weight: 600; }
+.curve .tl2 { font-size: 11px; fill: var(--muted); text-anchor: middle; }
+.curve .axis { font-size: 11px; fill: var(--muted-soft); }
+.curve-notes { margin: 16px 0 0; padding-left: 20px; font-size: 15px; }
+.curve-notes li { padding: 4px 0; }
+.chrono { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--hairline); }
+.chrono li { display: grid; grid-template-columns: 64px 64px 1fr; gap: 12px; align-items: baseline; padding: 8px 0 8px 16px; position: relative; }
+.chrono li::before { content: ""; position: absolute; left: -6px; top: 15px; width: 10px; height: 10px; border-radius: 50%; background: var(--canvas); border: 2px solid var(--primary); }
+.chrono li.is-star::before { background: var(--primary); }
+.chrono .cy { color: var(--primary); font-weight: 700; font-variant-numeric: tabular-nums; }
+.chrono .ctag { font-size: 12px; font-weight: 600; color: var(--muted); }
+.chrono .ct { color: var(--body); }
+.chrono li.is-star .ct { color: var(--ink); }
+.kings { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px; }
+.king { border: 1px solid var(--hairline); border-radius: var(--r-md); padding: 16px 18px; }
+.king.is-star { border-color: var(--primary); }
+.kh { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.kn { color: var(--ink); font-weight: 700; font-size: 17px; }
+.kw { color: var(--primary); font-size: 13px; font-weight: 600; }
+.king ul { margin: 0; padding-left: 18px; font-size: 15px; }
+.king li { padding: 2px 0; }
+.era-body.photos-only { grid-template-columns: 1fr; }
+.era-body.photos-only .photos { grid-template-columns: repeat(4, 1fr); }
+
 footer { padding: 64px 0 48px; color: var(--muted-soft); font-size: 12px; }
 
 @media (max-width: 760px) {
   .wrap { padding: 0 16px; }
-  .hero-row, .era-body, .quiz, .pairs, .exam-grid, .clues { grid-template-columns: 1fr; }
+  .hero-row, .era-body, .quiz, .pairs, .exam-grid, .clues, .kings { grid-template-columns: 1fr; }
+  .era-body.photos-only .photos { grid-template-columns: 1fr 1fr; }
+  .chrono li { grid-template-columns: 52px 1fr; }
+  .chrono .ctag { display: none; }
   .timeline { grid-template-columns: 1fr; padding: 0 0 0 28px; gap: 20px; }
   .timeline::before { top: 8px; bottom: 8px; left: 7px; right: auto; width: 2px; height: auto; }
   .tl::before { top: 4px; left: -28px; }
@@ -212,6 +246,25 @@ function examSection(E) {
     </section>`;
 }
 
+function curveSection(C) {
+  const W = 760, H = 240, px = 36, top = 24, bottom = 40;
+  const n = C.points.length, step = (W - px * 2) / (n - 1);
+  const x = i => px + i * step, y = v => top + (5 - v) / 4 * (H - top - bottom);
+  const path = C.points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
+  return `<section id="curve"><h2>${esc(C.title)}</h2>
+    ${C.note ? `<p class="lead">${fmt(C.note)}</p>` : ""}
+    <div class="card curve"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(C.title)}">
+      ${[1, 2, 3, 4, 5].map(v => `<line x1="${px}" x2="${W - px}" y1="${y(v)}" y2="${y(v)}" class="grid"/>`).join("")}
+      <path d="${path}" class="line"/>
+      ${C.points.map((p, i) => `<circle cx="${x(i)}" cy="${y(p.v)}" r="${p.star ? 7 : 5}" class="${p.star ? "dot star-dot" : "dot"}"/>
+        <text x="${x(i)}" y="${H - 18}" class="xl">${esc(p.label)}</text>
+        ${p.tag ? `<text x="${x(i)}" y="${y(p.v) - 12}" class="tl2">${esc(p.tag)}</text>` : ""}`).join("")}
+      <text x="4" y="${top + 4}" class="axis">강</text><text x="4" y="${H - bottom}" class="axis">약</text>
+    </svg></div>
+    <ol class="curve-notes">${C.points.map(p => `<li><strong>${esc(p.label)}</strong> ${fmt(p.note)}</li>`).join("")}</ol>
+  </section>`;
+}
+
 function quizCard(q, i) {
   const opts = q.opts ? `<ol class="opts">${q.opts.map((o, j) => `<li><span>${CIRCLED[j]}</span>${fmt(o)}</li>`).join("")}</ol>` : "";
   const ans = typeof q.a === "number" ? `${CIRCLED[q.a - 1]} ${fmt(q.opts[q.a - 1])}` : fmt(q.a);
@@ -240,7 +293,13 @@ function render() {
   document.getElementById("tabs").innerHTML = LECTURES.map(x =>
     `<a href="?l=${x.id}" class="${x.id === L.id ? "on" : ""}">${+x.id}강 ${esc(x.title)}</a>`).join("");
 
-  const jump = [...(L.exam ? [["exam", "기출"]] : []), ["timeline", "연표"],["compare", "비교표"], ...L.eras.map(e => [e.id, e.name]), ["quiz", "퀴즈"]];
+  const jump = [
+    ...(L.exam ? [["exam", "기출"]] : []),
+    ...(L.timeline ? [["timeline", "연표"]] : []),
+    ...(L.curve ? [["curve", "흥망 그래프"]] : []),
+    ...(L.chrono ? [["chrono", L.chrono.short || "연표"]] : []),
+    ...(L.compare ? [["compare", "비교표"]] : []),
+    ...L.eras.map(e => [e.id, e.name]), ["quiz", "퀴즈"]];
 
   document.getElementById("app").innerHTML = `
   <div class="jump"><div class="wrap"><nav class="pill">${jump.map(([h, t]) => `<a href="#${h}">${t}</a>`).join("")}</nav></div></div>
@@ -254,32 +313,40 @@ function render() {
           <audio controls preload="metadata" src="${L.audio}"></audio>
           <div class="hint">1.5배속으로 녹음된 파일이에요. 마지막에 퀴즈가 있어요.</div></div>
       </div>
-      <div class="legend"><span><span class="star">★</span> 노션 메모에서 중요 표시한 것</span><span><span class="add">메모에 없던 설명</span></span></div>
+      <div class="legend"><span><span class="star">★</span> 노션 메모에서 중요 표시한 것</span><span><span class="add">메모에 없던 설명</span></span><span><span class="ex">기출</span> 최근 5년 출제 횟수</span></div>
     </div>
 
     ${examSection(L.exam)}
 
-    <section id="timeline"><h2>연표</h2>
-      <div class="timeline">${L.timeline.map(t => `<div class="tl"><div class="era">${esc(t.era)}</div><div class="when">${esc(t.when)}</div><div class="key">${esc(t.key)}</div></div>`).join("")}</div>
-      <div class="divider-note">평등 사회 (구석기·신석기) ┃ <strong>계급 사회</strong> (청동기부터)</div>
-    </section>
+    ${L.timeline ? `<section id="timeline"><h2>연표</h2>
+      <div class="timeline" style="--cols:${L.timeline.length}">${L.timeline.map(t => `<div class="tl"><div class="era">${esc(t.era)}</div><div class="when">${esc(t.when)}</div><div class="key">${fmt(t.key)}</div></div>`).join("")}</div>
+      ${L.timelineNote ? `<div class="divider-note">${fmt(L.timelineNote)}</div>` : ""}
+    </section>` : ""}
 
-    <section id="compare"><h2>한눈에 비교</h2>
+    ${L.curve ? curveSection(L.curve) : ""}
+
+    ${L.chrono ? `<section id="chrono"><h2>${esc(L.chrono.title)}</h2>
+      ${L.chrono.note ? `<p class="lead">${fmt(L.chrono.note)}</p>` : ""}
+      <ol class="chrono">${L.chrono.items.map(c => `<li class="${c.star ? "is-star" : ""}"><span class="cy">${esc(String(c.y))}</span><span class="ctag">${esc(c.tag || "")}</span><span class="ct">${fmt(c.t)}</span></li>`).join("")}</ol>
+    </section>` : ""}
+
+    ${L.compare ? `<section id="compare"><h2>${esc(L.compare.title || "한눈에 비교")}</h2>
       <div class="table-wrap"><table>
         <thead><tr>${L.compare.cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead>
         <tbody>${L.compare.rows.map(r => `<tr><th>${esc(r[0])}</th>${r.slice(1).map(c => `<td>${fmt(c)}</td>`).join("")}</tr>`).join("")}</tbody>
       </table></div>
-      <div class="pairs">${L.pairs.map(p => `<div class="pair"><div class="label">${esc(p.label)}</div><div class="flow">${esc(p.from)}<span>→</span>${esc(p.to)}</div></div>`).join("")}</div>
-    </section>
+      ${L.pairs ? `<div class="pairs">${L.pairs.map(p => `<div class="pair"><div class="label">${esc(p.label)}</div><div class="flow">${esc(p.from)}<span>→</span>${esc(p.to)}</div></div>`).join("")}</div>` : ""}
+    </section>` : ""}
 
     ${L.eras.map(e => `
     <section id="${e.id}">
       <div class="era-head"><h2>${esc(e.name)}</h2><span class="when">${esc(e.when)}</span></div>
       <p class="lead">${fmt(e.lead)}</p>
-      <div class="era-body">
-        <ul class="points">${e.points.map(p => `<li class="${p.includes("★") ? "is-star" : ""}">${fmt(p)}</li>`).join("")}</ul>
-        <div class="photos">${e.photos.map(photo).join("")}</div>
-      </div>
+      ${e.kings ? `<div class="kings">${e.kings.map(k => `<div class="king ${k.star ? "is-star" : ""}"><div class="kh"><span class="kn">${fmt(k.name)}</span>${k.when ? `<span class="kw">${esc(k.when)}</span>` : ""}${k.ex ? `<span class="ex">${esc(k.ex)}</span>` : ""}</div><ul>${k.items.map(i => `<li>${fmt(i)}</li>`).join("")}</ul></div>`).join("")}</div>` : ""}
+      ${e.points || e.photos ? `<div class="era-body ${e.points ? "" : "photos-only"}">
+        ${e.points ? `<ul class="points">${e.points.map(p => `<li class="${p.includes("★") ? "is-star" : ""}">${fmt(p)}</li>`).join("")}</ul>` : ""}
+        ${e.photos ? `<div class="photos">${e.photos.map(photo).join("")}</div>` : ""}
+      </div>` : ""}
     </section>`).join("")}
 
     <section id="quiz"><h2>퀴즈</h2>
