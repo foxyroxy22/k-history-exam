@@ -42,9 +42,34 @@ strong { color: var(--ink); font-weight: 600; }
 header.top { position: sticky; top: 0; z-index: 10; background: var(--canvas); border-bottom: 1px solid var(--hairline-soft); }
 .top .wrap { display: flex; align-items: center; gap: 16px; height: 64px; }
 .logo { color: var(--primary); font-weight: 700; font-size: 18px; letter-spacing: -0.3px; white-space: nowrap; }
-.lect-tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
-.lect-tabs a { padding: 8px 14px; border-radius: 999px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 500; white-space: nowrap; }
-.lect-tabs a.on { color: var(--ink); background: var(--surface-strong); }
+.lect-nav { display: flex; align-items: center; gap: 6px; margin-left: auto; min-width: 0; }
+.nav-btn { flex: none; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--hairline); background: var(--canvas); color: var(--ink); font-size: 16px; cursor: pointer; display: grid; place-items: center; text-decoration: none; }
+.nav-btn:hover { box-shadow: var(--shadow); }
+.nav-btn[aria-disabled="true"] { opacity: .3; pointer-events: none; }
+.lect-btn { min-width: 0; display: flex; align-items: center; gap: 8px; padding: 8px 14px 8px 16px; border: 1px solid var(--hairline); border-radius: 999px; background: var(--canvas); color: var(--ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: var(--shadow); }
+.lect-btn span.t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lect-btn .chev { color: var(--muted); font-size: 12px; transition: transform .2s; }
+.lect-btn[aria-expanded="true"] .chev { transform: rotate(180deg); }
+.lect-panel { position: fixed; inset: 64px 0 auto 0; z-index: 20; background: var(--canvas); border-bottom: 1px solid var(--hairline); box-shadow: var(--shadow); max-height: calc(100vh - 64px); overflow-y: auto; display: none; }
+.lect-panel.open { display: block; }
+.lect-panel .wrap { padding-top: 20px; padding-bottom: 24px; }
+.panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.panel-head h2 { margin: 0; font-size: 18px; }
+.panel-head .cnt { color: var(--muted); font-size: 13px; }
+.lect-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.lect-grid a, .lect-grid span { display: flex; gap: 10px; align-items: baseline; padding: 12px 14px; border: 1px solid var(--hairline-soft); border-radius: var(--r-sm); text-decoration: none; color: var(--ink); font-size: 14px; }
+.lect-grid a:hover { border-color: var(--hairline); background: var(--surface-soft); }
+.lect-grid a.on { border-color: var(--primary); background: var(--primary-soft); }
+.lect-grid b { color: var(--primary); font-variant-numeric: tabular-nums; min-width: 34px; }
+.lect-grid span { color: var(--muted-soft); border-style: dashed; }
+.lect-grid span b { color: var(--muted-soft); }
+.scrim { position: fixed; inset: 64px 0 0 0; z-index: 19; background: rgba(0,0,0,.25); display: none; }
+.scrim.open { display: block; }
+@media (max-width: 760px) {
+  .logo { font-size: 16px; }
+  .lect-btn { padding: 8px 12px; }
+  .lect-grid { grid-template-columns: 1fr 1fr; }
+}
 
 /* 섹션 이동 (검색바 모양 알약) */
 .jump { position: sticky; top: 64px; z-index: 9; background: var(--canvas); padding: 12px 0; }
@@ -197,7 +222,17 @@ footer { padding: 64px 0 48px; color: var(--muted-soft); font-size: 12px; }
 </style>
 </head>
 <body>
-<header class="top"><div class="wrap"><div class="logo">한능검 복습</div><nav class="lect-tabs" id="tabs"></nav></div></header>
+<header class="top"><div class="wrap"><a class="logo" href="./" style="text-decoration:none">한능검 복습</a>
+  <nav class="lect-nav" aria-label="강의 선택">
+    <a class="nav-btn" id="prev" aria-label="이전 강의">‹</a>
+    <button class="lect-btn" id="lectBtn" type="button" aria-expanded="false" aria-controls="lectPanel"><span class="t" id="lectLabel">강의 선택</span><span class="chev">▼</span></button>
+    <a class="nav-btn" id="next" aria-label="다음 강의">›</a>
+  </nav></div></header>
+<div class="scrim" id="scrim"></div>
+<div class="lect-panel" id="lectPanel"><div class="wrap">
+  <div class="panel-head"><h2>강의 목록</h2><span class="cnt" id="lectCnt"></span></div>
+  <div class="lect-grid" id="lectGrid"></div>
+</div></div>
 <main id="app"></main>
 
 <script>const LECTURES = [];</script>
@@ -285,13 +320,36 @@ function photo(p) {
     <div class="name">${fmt(p.name)}</div><div class="credit">${fmt(p.credit)}</div></a>`;
 }
 
+function renderNav(L) {
+  const i = LECTURES.indexOf(L), total = Math.max(typeof TOTAL === "number" ? TOTAL : 0, LECTURES.length);
+  const prev = LECTURES[i - 1], next = LECTURES[i + 1];
+  const setNav = (el, x) => { if (x) { el.href = `?l=${x.id}`; el.title = `${+x.id}강 ${x.title}`; el.removeAttribute("aria-disabled"); } else { el.removeAttribute("href"); el.setAttribute("aria-disabled", "true"); } };
+  setNav(document.getElementById("prev"), prev); setNav(document.getElementById("next"), next);
+  document.getElementById("lectLabel").textContent = `${+L.id}강 · ${L.title}`;
+  document.getElementById("lectCnt").textContent = `${LECTURES.length} / ${total}강 준비됨`;
+  const made = new Map(LECTURES.map(x => [+x.id, x]));
+  document.getElementById("lectGrid").innerHTML = Array.from({ length: total }, (_, k) => {
+    const x = made.get(k + 1);
+    return x ? `<a href="?l=${x.id}" class="${x === L ? "on" : ""}"><b>${k + 1}강</b>${esc(x.title)}</a>` : `<span><b>${k + 1}강</b>준비 중</span>`;
+  }).join("");
+  const btn = document.getElementById("lectBtn"), panel = document.getElementById("lectPanel"), scrim = document.getElementById("scrim");
+  const toggle = open => { btn.setAttribute("aria-expanded", open); panel.classList.toggle("open", open); scrim.classList.toggle("open", open); };
+  btn.onclick = () => toggle(btn.getAttribute("aria-expanded") !== "true");
+  scrim.onclick = () => toggle(false);
+  document.onkeydown = e => {
+    if (e.key === "Escape") toggle(false);
+    if (e.target.matches("input, textarea")) return;
+    if (e.key === "ArrowLeft" && prev) location.search = `?l=${prev.id}`;
+    if (e.key === "ArrowRight" && next) location.search = `?l=${next.id}`;
+  };
+}
+
 function render() {
   const id = new URLSearchParams(location.search).get("l") || LECTURES[LECTURES.length - 1]?.id;
   const L = LECTURES.find(x => x.id === id) || LECTURES[0];
   if (!L) { document.getElementById("app").innerHTML = '<div class="wrap hero">강의 데이터가 없어요.</div>'; return; }
   document.title = `${+L.id}강 ${L.title} · 한능검 복습`;
-  document.getElementById("tabs").innerHTML = LECTURES.map(x =>
-    `<a href="?l=${x.id}" class="${x.id === L.id ? "on" : ""}">${+x.id}강 ${esc(x.title)}</a>`).join("");
+  renderNav(L);
 
   const jump = [
     ...(L.exam ? [["exam", "기출"]] : []),
